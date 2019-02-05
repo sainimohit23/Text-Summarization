@@ -43,7 +43,8 @@ class model():
                                                                  dtype=tf.float32)
         
         concat_outputs = tf.concat(outputs, 2)
-        return concat_outputs, state
+        
+        return concat_outputs, state[0]
     
     def decoding_layer_train(self, encoder_outputs, encoder_state, dec_cell, dec_embed_input, 
                              target_sequence_length, max_summary_length, 
@@ -65,8 +66,11 @@ class model():
         attention_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell, attention_mechanism,
                                                              attention_layer_size=rnn_size/2)
         
+        state = attention_cell.zero_state(dtype=tf.float32, batch_size=batch_size)
+        state = state.clone(cell_state=encoder_state)
+
         decoder = tf.contrib.seq2seq.BasicDecoder(cell=attention_cell, helper=train_helper, 
-                                                  initial_state=attention_cell.zero_state(dtype=tf.float32, batch_size=batch_size),
+                                                  initial_state=state,
                                                   output_layer=output_layer) 
         outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder, impute_finished=True, maximum_iterations=max_summary_length)
         
@@ -96,8 +100,11 @@ class model():
         attention_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell, attention_mechanism,
                                                              attention_layer_size=rnn_size/2)
         
+        state = attention_cell.zero_state(dtype=tf.float32, batch_size=batch_size)
+        state = state.clone(cell_state=encoder_state)
+        
         decoder = tf.contrib.seq2seq.BasicDecoder(cell=attention_cell, helper=infer_helper, 
-                                                  initial_state=attention_cell.zero_state(dtype=tf.float32, batch_size=batch_size),
+                                                  initial_state=state,
                                                   output_layer=output_layer)
        
         outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder, impute_finished=True, maximum_iterations=max_target_sequence_length)
