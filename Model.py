@@ -34,17 +34,36 @@ class model():
         
         embed = tf.nn.embedding_lookup(emb_matrix, rnn_inputs)
         
-        stacked_cells = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.LSTMCell(rnn_size), keep_prob) for _ in range(num_layers)])
+        stacked_cells = tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.LSTMCell(rnn_size), keep_prob)
         
-        outputs, state = tf.nn.bidirectional_dynamic_rnn(cell_fw=stacked_cells, 
+        #tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.LSTMCell(rnn_size), keep_prob) for _ in range(num_layers)])
+        
+        ((encoder_fw_outputs,encoder_bw_outputs),
+         (encoder_fw_final_state,encoder_bw_final_state)) = tf.nn.bidirectional_dynamic_rnn(cell_fw=stacked_cells, 
                                                                  cell_bw=stacked_cells, 
                                                                  inputs=embed, 
                                                                  sequence_length=source_sequence_length, 
                                                                  dtype=tf.float32)
         
-        concat_outputs = tf.concat(outputs, 2)
         
-        return concat_outputs, state[0]
+
+        encoder_outputs = tf.concat((encoder_fw_outputs, encoder_bw_outputs), 2)
+        
+        encoder_final_state_c = tf.concat(
+            (encoder_fw_final_state.c, encoder_bw_final_state.c), 1)
+        
+        encoder_final_state_h = tf.concat(
+            (encoder_fw_final_state.h, encoder_bw_final_state.h), 1)
+        
+        encoder_final_state = tf.nn.rnn_cell.LSTMStateTuple(
+            c=encoder_final_state_c,
+            h=encoder_final_state_h
+        )
+
+
+        
+        return encoder_outputs, encoder_final_state
+    
     
     def decoding_layer_train(self, encoder_outputs, encoder_state, dec_cell, dec_embed_input, 
                              target_sequence_length, max_summary_length, 
@@ -107,7 +126,8 @@ class model():
                                                   initial_state=state,
                                                   output_layer=output_layer)
        
-        outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder, impute_finished=True, maximum_iterations=max_target_sequence_length)
+        outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder, impute_finished=True,
+                                                          maximum_iterations=max_target_sequence_length)
         
         return outputs
     
@@ -124,7 +144,7 @@ class model():
         target_vocab_size = len(target_vocab_to_int) + 1
         dec_embed_input = tf.nn.embedding_lookup(emb_matrix, dec_input)
         
-        cells = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.LSTMCell(rnn_size) for _ in range(num_layers)])
+        cells = tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.LSTMCell(rnn_size), keep_prob)
         
         with tf.variable_scope("decode"):
             output_layer = tf.layers.Dense(target_vocab_size)
@@ -186,7 +206,7 @@ class model():
                                                    enc_states, 
                                                    target_sequence_length, 
                                                    max_target_sentence_length,
-                                                   rnn_size,
+                                                   rnn_size * 2,
                                                   num_layers,
                                                   target_vocab_to_int,
                                                   target_vocab_size,
