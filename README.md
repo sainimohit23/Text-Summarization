@@ -15,7 +15,7 @@ Used [Glove pre-trained vectors](https://nlp.stanford.edu/projects/glove/) to in
 
 ## Usage
 ### Extract Data
-Dataset is available at [harvardnlp/sent-summary](https://github.com/harvardnlp/sent-summary). Locate the summary.tar.gz file in project root directory. Then,
+Dataset is available at [harvardnlp/sent-summary](https://github.com/harvardnlp/sent-summary). Place the summary.tar.gz file in project root directory. Then,
 ```
 $ python extractData.py
 ```
